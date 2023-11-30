@@ -23,6 +23,7 @@ from GlyphsApp.plugins import *
 from Foundation import NSMutableOrderedSet, NSClassFromString, NSZeroRect, NSMaxXEdge, NSArray, NSLog, NSAttributedString
 from AppKit import NSImageNameFolder, NSPopover, NSPopoverBehaviorTransient
 from io import StringIO
+import re
 import shlex
 import shutil
 import sys
@@ -85,6 +86,11 @@ def run_subprocess_in_macro_window(command, check=False, show_window=True, captu
 		return subprocess.CompletedProcess(process.args, returncode, output.getvalue(), "")
 
 	return subprocess.CompletedProcess(process.args, returncode, None, None)
+
+
+def reveal_file_in_finder(path):
+	quoted_path = shlex.quote(str(path))
+	subprocess.run(f"[ -e {quoted_path} ] && open -R {quoted_path}", shell=True)
 
 
 class GSAddOptionViewController(GSAddParameterViewControllerClass):
@@ -297,6 +303,11 @@ class FontMakeExport(FileFormatPlugin):
 					errorLines.append(line)
 			errorMsg = "\n".join(errorLines) or "An error occurred. Check Macro Window for details."
 			return False, errorMsg
+
+		output_paths = re.findall(r"^INFO:fontmake.font_project:Saving (.*)$", result.stdout, flags=re.M)
+		if output_paths:
+			# there may be more than one outputs, only reveal the last one
+			reveal_file_in_finder(output_paths[-1])
 
 		return True, "OK"
 
